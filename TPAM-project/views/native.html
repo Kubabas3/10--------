@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2F3BA2">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="../styles.css">
+  <title>Funkcje natywne — PWA</title>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="../index.html">Strona główna</a> |
+      <a href="native.html">Funkcje natywne</a> |
+      <a href="offline.html">Offline</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Funkcje natywne</h1>
+    <div class="controls">
+      <button id="get-location">Pobierz geolokalizację</button>
+      <button id="open-camera">Otwórz kamerę</button>
+      <button id="stop-camera" style="display:none">Zatrzymaj kamerę</button>
+    </div>
+
+    <section id="native-output">
+      <h2>Wyniki</h2>
+      <div id="location-result">—</div>
+      <video id="camera-preview" autoplay playsinline style="display:none;max-width:100%;height:auto;border:1px solid #ccc;"></video>
+    </section>
+  </main>
+  <script src="../app.js"></script>
+</body>
+</html>
