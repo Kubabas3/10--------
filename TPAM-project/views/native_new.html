@@ -20,17 +20,19 @@
   </header>
   <main>
     <h1>Aktywna wędrówka 🥾</h1>
+
     <div class="tracking-layout">
-      <!-- Левая колонна -->
+      <!-- ЛЕВАЯ КОЛОННА -->
       <div class="tracking-column">
         <div class="card">
           <h2>Sterowanie</h2>
           <div class="controls">
             <button id="startTracking" class="start-btn">Rozpocznij śledzenie</button>
-            <button id="stopTracking" class="secondary" disabled>Zatrzymaj</button>
+            <button id="stopTracking" class="secondary" disabled>Zatrzymaj śledzenie</button>
             <button id="saveHike" class="save-btn" disabled>Zapisz wędrówkę</button>
           </div>
         </div>
+
         <div class="card">
           <h2>Statystyki na żywo</h2>
           <div class="stats-live">
@@ -42,7 +44,7 @@
         </div>
       </div>
 
-      <!-- Средняя колонна -->
+      <!-- СРЕДНЯЯ КОЛОННА -->
       <div class="tracking-column">
         <div class="card">
           <h2>Mapa trasy</h2>
@@ -51,15 +53,18 @@
         </div>
       </div>
 
-      <!-- Правая колонна -->
+      <!-- ПРАВАЯ КОЛОННА -->
       <div class="tracking-column">
         <div class="card">
           <h2>Dodaj zdjęcie punktu</h2>
-          <video id="cameraPreview" autoplay playsinline style="width:100%; max-height:200px;"></video>
-          <button id="enableCamera" class="secondary">Włącz kamerę</button>
-          <button id="disableCamera" class="secondary" disabled>Wyłącz kamerę</button>
-          <button id="takePhoto" class="secondary">Zrób zdjęcie</button>
+          <video id="cameraPreview" autoplay playsinline style="width:100%; max-height:220px; background:#000;"></video>
+          <div class="camera-controls" style="margin-top:10px; display:flex; gap:8px;">
+            <button id="enableCamera">Włącz kamerę</button>
+            <button id="disableCamera" disabled>Wyłącz kamerę</button>
+            <button id="takePhoto">Zrób zdjęcie</button>
+          </div>
         </div>
+
         <div class="card">
           <h2>Twoje zdjęcia z trasy</h2>
           <div id="photoGallery"></div>
@@ -67,9 +72,11 @@
       </div>
     </div>
   </main>
+
   <footer>
     Uwaga: Aplikacja zapisuje dane lokalnie. Po zapisaniu wędrówki trafią one do Historii.
   </footer>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="../app.js"></script>
 </body>

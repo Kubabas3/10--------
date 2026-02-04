@@ -62,7 +62,21 @@ function bindNavigation(){
       // internal navigation only
       if (href && !href.startsWith('http') && !href.startsWith('mailto:')){
         e.preventDefault();
-        loadPage(href);
+        // Resolve relative hrefs against current location
+        try {
+          const resolved = new URL(href, location.href);
+          // If page is opened via file://, do a full navigation instead of SPA fetch
+          if (location.protocol === 'file:') {
+            window.location.href = resolved.href;
+            return;
+          }
+          // Use pathname (keeps site-root relative)
+          loadPage(resolved.pathname + resolved.search + resolved.hash);
+        } catch (err) {
+          // Fallback: use simple normalization
+          const normalizedHref = href.startsWith('/') ? href : ('/' + href);
+          loadPage(normalizedHref);
+        }
       }
     });
   });
@@ -75,7 +89,11 @@ let positions = [];
 let timerInterval = null;
 let map = null;
 let markers = [];
-let photos = [];
+let photos = []; // {dataUrl, lat, lng, time}
+let watchId = null;
+let trackPolyline = null;
+let photoMarkers = [];
+let camStream = null; // Global camera stream
 
 // Helper functions for tracking
 function formatTime(seconds) {
@@ -100,70 +118,88 @@ function updateStats() {
   if (!isTracking) return;
   const now = Date.now();
   const elapsed = Math.floor((now - startTime) / 1000);
-  document.getElementById('hikeTimer').textContent = formatTime(elapsed);
+  const timerEl = document.getElementById('liveTimer') || document.getElementById('hikeTimer');
+  if (timerEl) timerEl.textContent = formatTime(elapsed);
 
   if (positions.length > 1) {
     let totalDist = 0;
     for (let i = 1; i < positions.length; i++) {
       totalDist += calculateDistance(positions[i-1], positions[i]);
     }
-    document.getElementById('hikeDistance').textContent = totalDist.toFixed(2);
+    const distEl = document.getElementById('liveDistance') || document.getElementById('hikeDistance');
+    if (distEl) distEl.textContent = totalDist.toFixed(2);
 
-    const speed = (totalDist / (elapsed / 3600)).toFixed(1);
-    document.getElementById('hikeSpeed').textContent = speed;
+    const speed = (totalDist / (elapsed / 3600)) || 0;
+    const speedEl = document.getElementById('liveSpeed') || document.getElementById('hikeSpeed');
+    if (speedEl) speedEl.textContent = speed.toFixed(1);
   }
 
   if (positions.length > 0) {
-    document.getElementById('hikeAltitude').textContent = positions[positions.length - 1].alt || '-';
+    const alt = positions[positions.length - 1].alt;
+    const altEl = document.getElementById('liveAltitude') || document.getElementById('hikeAltitude');
+    if (altEl) altEl.textContent = (alt !== null && alt !== undefined) ? alt : '-';
   }
 }
 
 function startTracking() {
   if (isTracking) return;
+  if (!navigator.geolocation) {
+    showToast('Geolokalizacja nie jest obsługiwana w tej przeglądarce.');
+    return;
+  }
   isTracking = true;
   startTime = Date.now();
   positions = [];
   markers = [];
   photos = [];
+  photoMarkers = [];
   document.getElementById('startTracking').disabled = true;
   document.getElementById('stopTracking').disabled = false;
   document.getElementById('saveHike').disabled = true;
 
   // Initialize map if not already
-  if (!map && typeof L !== 'undefined') {
-    map = L.map('trackingMap').setView([52.2297, 21.0122], 13); // Default to Warsaw
+  const trackingMap = document.getElementById('trackingMap');
+  if (trackingMap && typeof L !== 'undefined' && !map) {
+    map = L.map('trackingMap').setView([52.0691, 19.4800], 6); // view on Poland
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
+  }
+
+  // polyline for track
+  if (map && !trackPolyline) {
+    trackPolyline = L.polyline([], { color: '#2d5016' }).addTo(map);
   }
 
   // Start timer
   timerInterval = setInterval(updateStats, 1000);
 
   // Start geolocation watch
-  if (navigator.geolocation) {
-    navigator.geolocation.watchPosition((pos) => {
-      const latlng = { lat: pos.coords.latitude, lng: pos.coords.longitude, alt: pos.coords.altitude };
-      positions.push(latlng);
-      document.getElementById('pointsCount').textContent = positions.length;
+  watchId = navigator.geolocation.watchPosition((pos) => {
+    const latlng = { lat: pos.coords.latitude, lng: pos.coords.longitude, alt: pos.coords.altitude };
+    positions.push(latlng);
+    const pc = document.getElementById('pointsCount'); if (pc) pc.textContent = positions.length;
 
-      if (map) {
-        const marker = L.marker([latlng.lat, latlng.lng]).addTo(map);
-        markers.push(marker);
-        if (positions.length === 1) {
-          map.setView([latlng.lat, latlng.lng], 15);
-        }
-      }
-    }, (err) => {
-      console.warn('Błąd geolokalizacji podczas śledzenia:', err);
-    }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 });
-  }
+    if (map) {
+      const marker = L.circleMarker([latlng.lat, latlng.lng], { radius: 5, color: '#4a7c59' }).addTo(map);
+      markers.push(marker);
+      trackPolyline.addLatLng([latlng.lat, latlng.lng]);
+      if (positions.length === 1) map.setView([latlng.lat, latlng.lng], 15);
+    }
+  }, (err) => {
+    console.warn('Błąd geolokalizacji podczas śledzenia:', err);
+    showToast('Błąd geolokalizacji: ' + err.message);
+  }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
 }
 
 function stopTracking() {
   if (!isTracking) return;
   isTracking = false;
   clearInterval(timerInterval);
+  if (watchId !== null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
   document.getElementById('startTracking').disabled = false;
   document.getElementById('stopTracking').disabled = true;
   document.getElementById('saveHike').disabled = false;
@@ -171,10 +207,14 @@ function stopTracking() {
 
 function saveHike() {
   if (positions.length === 0) return;
+  const duration = Math.floor((Date.now() - startTime) / 1000);
+  // compute distance
+  let totalDist = 0;
+  for (let i = 1; i < positions.length; i++) totalDist += calculateDistance(positions[i-1], positions[i]);
   const hikeData = {
     date: new Date().toISOString(),
-    duration: Math.floor((Date.now() - startTime) / 1000),
-    distance: parseFloat(document.getElementById('hikeDistance').textContent),
+    duration: duration,
+    distance: parseFloat(totalDist.toFixed(2)),
     positions: positions,
     photos: photos
   };
@@ -182,39 +222,72 @@ function saveHike() {
   hikes.push(hikeData);
   localStorage.setItem('hikes', JSON.stringify(hikes));
 
-  // Also save to savedHikes for history
+  // Also save to savedHikes for history (summary)
   const summary = `Wędrówka ${new Date().toLocaleDateString()}: ${hikeData.distance.toFixed(2)} km, ${formatTime(hikeData.duration)}, ${photos.length} zdjęć`;
   const savedHikes = JSON.parse(localStorage.getItem('savedHikes') || '[]');
   savedHikes.push(summary);
   localStorage.setItem('savedHikes', JSON.stringify(savedHikes));
 
   showToast('Wędrówka zapisana!');
-  // Reset
+  // Reset visuals and data
   positions = [];
-  markers.forEach(m => map.removeLayer(m));
-  markers = [];
+  markers.forEach(m => map.removeLayer(m)); markers = [];
+  if (trackPolyline) { trackPolyline.setLatLngs([]); }
   photos = [];
-  document.getElementById('hikePhotos').innerHTML = '';
-  document.getElementById('pointsCount').textContent = '0';
-  document.getElementById('hikeTimer').textContent = '00:00:00';
-  document.getElementById('hikeDistance').textContent = '0.0';
-  document.getElementById('hikeSpeed').textContent = '0.0';
-  document.getElementById('hikeAltitude').textContent = '-';
+  photoMarkers.forEach(pm => map.removeLayer(pm)); photoMarkers = [];
+  const gallery = document.getElementById('photoGallery') || document.getElementById('hikePhotos'); if (gallery) gallery.innerHTML = '';
+  const pc = document.getElementById('pointsCount'); if (pc) pc.textContent = '0';
+  const timerEl = document.getElementById('liveTimer') || document.getElementById('hikeTimer'); if (timerEl) timerEl.textContent = '00:00:00';
+  const distEl = document.getElementById('liveDistance') || document.getElementById('hikeDistance'); if (distEl) distEl.textContent = '0.0';
+  const speedEl = document.getElementById('liveSpeed') || document.getElementById('hikeSpeed'); if (speedEl) speedEl.textContent = '0.0';
+  const altEl = document.getElementById('liveAltitude') || document.getElementById('hikeAltitude'); if (altEl) altEl.textContent = '-';
   document.getElementById('saveHike').disabled = true;
 }
 
 function takePhoto() {
-  const video = document.getElementById('hikeCamera');
-  if (!video || video.style.display === 'none') return;
+  const video = document.getElementById('cameraPreview') || document.getElementById('hikeCamera');
+  if (!video || !video.srcObject) {
+    showToast('Kamera nie jest uruchomiona');
+    return;
+  }
   const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   const imgData = canvas.toDataURL('image/jpeg');
-  photos.push(imgData);
-  const img = document.createElement('img');
-  img.src = imgData;
-  document.getElementById('hikePhotos').appendChild(img);
+
+  // attach to last known position
+  const lastPos = positions.length ? positions[positions.length - 1] : null;
+  const time = new Date().toISOString();
+  const photoObj = { dataUrl: imgData, lat: lastPos ? lastPos.lat : null, lng: lastPos ? lastPos.lng : null, time };
+  photos.push(photoObj);
+
+  // add thumbnail
+  const gallery = document.getElementById('photoGallery') || document.getElementById('hikePhotos');
+  if (gallery) {
+    const wrap = document.createElement('div');
+    wrap.className = 'photo-thumb card';
+    const img = document.createElement('img'); img.src = imgData; img.alt = 'photo'; img.style.width = '100%';
+    const meta = document.createElement('div'); meta.className = 'photo-meta';
+    meta.textContent = `${lastPos ? `${lastPos.lat.toFixed(5)}, ${lastPos.lng.toFixed(5)}` : 'brak pozycji'} — ${new Date(time).toLocaleString()}`;
+    const del = document.createElement('button'); del.textContent = 'Usuń zdjęcie'; del.className = 'secondary';
+    del.addEventListener('click', () => {
+      const idx = photos.indexOf(photoObj);
+      if (idx !== -1) photos.splice(idx,1);
+      wrap.remove();
+      // remove marker
+      const pm = photoMarkers[idx]; if (pm) { map.removeLayer(pm); photoMarkers.splice(idx,1); }
+    });
+    wrap.appendChild(img); wrap.appendChild(meta); wrap.appendChild(del);
+    gallery.appendChild(wrap);
+  }
+
+  // add marker for photo
+  if (map && lastPos) {
+    const pm = L.marker([lastPos.lat, lastPos.lng]).addTo(map).bindPopup(`<img src="${imgData}" style="width:120px"><div>${new Date(time).toLocaleString()}</div>`);
+    photoMarkers.push(pm);
+  }
 }
 
 function bindDynamic(){
@@ -229,113 +302,60 @@ function bindDynamic(){
   if (stopBtn) stopBtn.addEventListener('click', stopTracking);
   if (saveBtn) saveBtn.addEventListener('click', saveHike);
 
-  // Camera for tracking
-  const hikeCamera = document.getElementById('hikeCamera');
-  const takePhotoBtn = document.getElementById('takePhoto');
-  if (hikeCamera && takePhotoBtn) {
+  // Camera controls (enable/disable/take)
+  const cameraPreview = document.getElementById('cameraPreview') || document.getElementById('hikeCamera');
+  const enableBtn = document.getElementById('enableCamera');
+  const disableBtn = document.getElementById('disableCamera');
+  const takePhotoBtn = document.getElementById('takePhoto') || document.getElementById('takePhoto');
+  if (enableBtn) {
+    enableBtn.addEventListener('click', async () => {
+      try {
+        camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (cameraPreview) cameraPreview.srcObject = camStream;
+        if (disableBtn) disableBtn.disabled = false;
+        if (enableBtn) enableBtn.disabled = true;
+        showToast('Kamera włączona');
+      } catch (e) {
+        console.warn('Błąd kamery:', e);
+        showToast('Nie można uruchomić kamery: ' + e.message);
+      }
+    });
+  }
+  if (disableBtn) {
+    disableBtn.addEventListener('click', () => {
+      if (camStream) {
+        camStream.getTracks().forEach(t => t.stop());
+        camStream = null;
+      }
+      if (cameraPreview) cameraPreview.srcObject = null;
+      disableBtn.disabled = true;
+      if (enableBtn) enableBtn.disabled = false;
+      showToast('Kamera wyłączona');
+    });
+  }
+  if (takePhotoBtn) {
     takePhotoBtn.addEventListener('click', takePhoto);
-    // Initialize camera
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
-        hikeCamera.srcObject = stream;
-      }).catch((err) => {
-        console.warn('Nie można uzyskać dostępu do kamery:', err);
-      });
-    }
+  }
+
+  // reflect current camera state on buttons/preview
+  try {
+    if (enableBtn) enableBtn.disabled = !!camStream;
+    if (disableBtn) disableBtn.disabled = !camStream;
+    if (camStream && cameraPreview) cameraPreview.srcObject = camStream;
+  } catch (e) {
+    console.warn('Nie można ustawić stanu kamery:', e);
   }
 
   // Initialize map if on tracking page
   const trackingMap = document.getElementById('trackingMap');
   if (trackingMap && typeof L !== 'undefined' && !map) {
-    map = L.map('trackingMap').setView([52.2297, 21.0122], 13);
+    map = L.map('trackingMap').setView([52.0691, 19.4800], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
   }
 
-  // Legacy buttons (for compatibility)
-  const getLocationBtn = document.getElementById('get-location');
-  const locationResult = document.getElementById('location-result');
-  if (getLocationBtn){
-    getLocationBtn.addEventListener('click', () => {
-      if (!navigator.geolocation){
-        if (locationResult) locationResult.textContent = 'Geolokalizacja nie jest obsługiwana.';
-        console.log('Geolocation not supported');
-        return;
-      }
-      navigator.geolocation.getCurrentPosition((pos) => {
-        const coords = `Szer: ${pos.coords.latitude.toFixed(6)}, Dł: ${pos.coords.longitude.toFixed(6)}`;
-        console.log('Pozycja wędrówki:', coords);
-        if (locationResult) locationResult.textContent = coords;
-        // Save hike data
-        const hikeData = `Pozycja wędrówki: ${coords} (${new Date().toLocaleString()})`;
-        const items = JSON.parse(localStorage.getItem('savedHikes') || '[]');
-        items.push(hikeData);
-        localStorage.setItem('savedHikes', JSON.stringify(items));
-        // Re-render if on history page
-        const savedList = document.getElementById('saved-list');
-        if (savedList) {
-          savedList.innerHTML = '';
-          if (items.length === 0){
-            const li = document.createElement('li'); li.textContent = 'Brak zapisanych wędrówek'; savedList.appendChild(li);
-          } else {
-            items.forEach(it => { const li = document.createElement('li'); li.textContent = it; savedList.appendChild(li); });
-          }
-        }
-      }, (err) => {
-        console.warn('Błąd geolokalizacji:', err.message);
-        if (locationResult) locationResult.textContent = `Błąd: ${err.message}`;
-      }, { enableHighAccuracy: true, timeout: 10000 });
-    });
-  }
-
-  const openCameraBtn = document.getElementById('open-camera');
-  const stopCameraBtn = document.getElementById('stop-camera');
-  const cameraPreview = document.getElementById('camera-preview');
-  let stream = null;
-  if (openCameraBtn){
-    openCameraBtn.addEventListener('click', async () => {
-      try{
-        stream = await navigator.mediaDevices.getUserMedia({video:true});
-        if (cameraPreview) {
-          cameraPreview.srcObject = stream;
-          cameraPreview.style.display = 'block';
-        }
-        if (stopCameraBtn) stopCameraBtn.style.display = 'inline-block';
-        console.log('Kamera uruchomiona dla zdjęć wędrówki');
-        // Save photo event
-        const photoData = `Zdjęcie wędrówki zrobione: ${new Date().toLocaleString()}`;
-        const items = JSON.parse(localStorage.getItem('savedHikes') || '[]');
-        items.push(photoData);
-        localStorage.setItem('savedHikes', JSON.stringify(items));
-        // Re-render if on history page
-        const savedList = document.getElementById('saved-list');
-        if (savedList) {
-          savedList.innerHTML = '';
-          if (items.length === 0){
-            const li = document.createElement('li'); li.textContent = 'Brak zapisanych wędrówek'; savedList.appendChild(li);
-          } else {
-            items.forEach(it => { const li = document.createElement('li'); li.textContent = it; savedList.appendChild(li); });
-          }
-        }
-      }catch(e){
-        console.warn('Błąd kamery:', e.message);
-        alert('Brak dostępu do kamery: ' + e.message);
-      }
-    });
-  }
-  if (stopCameraBtn){
-    stopCameraBtn.addEventListener('click', () => {
-      if (stream){
-        stream.getTracks().forEach(t => t.stop());
-        stream = null;
-      }
-      if (cameraPreview) cameraPreview.style.display = 'none';
-      stopCameraBtn.style.display = 'none';
-    });
-  }
-
-  // saved-list rendering (if present)
+  // Legacy compatibility: render saved list if present
   const savedList = document.getElementById('saved-list');
   if (savedList){
     const items = JSON.parse(localStorage.getItem('savedHikes') || '[]');
@@ -360,9 +380,10 @@ window.addEventListener('offline', () => {
 });
 window.addEventListener('online', () => { showToast('Połączenie sieciowe przywrócone — synchronizacja danych wędrówki'); });
 
-// popstate handle
+// popstate handle - for browser back/forward navigation
 window.addEventListener('popstate', (e) => {
-  loadPage(location.pathname, false);
+  const path = location.pathname === '/' ? '/index.html' : location.pathname;
+  loadPage(path, false);
 });
 
 // Init
