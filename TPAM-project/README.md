@@ -1,17 +1,18 @@
-# Aplikacja PWA - My PWA
+# HikeTracker - Aplikacja PWA
 
 **Opis**
 
-Progresywna aplikacja webowa (PWA) spełniająca 10 wymagań — instalowalna, pracująca w trybie offline oraz wykorzystująca funkcje natywne urządzenia.
+Progresywna aplikacja webowa (PWA) do śledzenia wędrówek górskich — instalowalna, pracująca w trybie offline oraz wykorzystująca funkcje natywne urządzenia.
 
 ---
 
 ## Funkcje
 - Możliwość instalacji (PWA)
 - Praca offline (service worker + cache)
-- Geolokalizacja (pobieranie współrzędnych)
-- Dostęp do kamery (podgląd strumienia wideo)
+- Geolokalizacja (pobieranie współrzędnych podczas wędrówki)
+- Dostęp do kamery (zdjęcia podczas wędrówki)
 - Responsywny design (mobilne i desktopowe)
+- Śledzenie dystansu i historii wędrówek
 
 ---
 

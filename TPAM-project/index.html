@@ -3,24 +3,70 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#2F3BA2">
+  <meta name="theme-color" content="#2d5016">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
-  <title>Witryna PWA</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <title>HikeTracker - Główna</title>
 </head>
 <body>
   <header>
-    <h1 class="site-title">My PWA</h1>
+    <h1 class="site-title">HikeTracker 🏔️</h1>
     <nav>
-      <a href="index.html" class="active">🏠 Strona główna</a> |
-      <a href="views/native.html">📱 Funkcje natywne</a> |
-      <a href="views/offline.html">📶 Offline</a>
+      <a href="index.html" class="active">Główna</a> |
+      <a href="views/native.html">Wędrówka</a> |
+      <a href="views/offline.html">Historia</a>
     </nav>
   </header>
   <main>
-    <h1>Witamy w aplikacji PWA</h1>
-    <p>Prosta aplikacja progresywna z obsługą funkcji natywnych i trybu offline.</p>
+    <h1>HikeTracker 🏔️</h1>
+    <p>Twój dziennik górskich przygód</p>
+
+    <div class="card">
+      <h2>Mapa</h2>
+      <div id="mainMap" class="map-placeholder">Mapa zostanie załadowana...</div>
+    </div>
+
+    <div class="card">
+      <h2>Szybki start</h2>
+      <div class="quick-start">
+        <button onclick="location.href='views/native.html'">Rozpocznij nową wędrówkę</button>
+        <button class="secondary" onclick="location.href='views/offline.html'">Zobacz historię</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Ostatnie wędrówki</h2>
+      <ul id="recentHikes">
+        <li>Tatry, 12.5 km, 5 zdjęć, 2024-03-15</li>
+        <li>Bieszczady, 8.2 km, 3 zdjęcia, 2024-03-10</li>
+        <li>Karkonosze, 15.3 km, 7 zdjęć, 2024-03-05</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Statystyki</h2>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div>Łączny dystans</div>
+          <div class="stat-value" id="totalDistance">36</div>
+          <div>km</div>
+        </div>
+        <div class="stat-item">
+          <div>Liczba wędrówek</div>
+          <div class="stat-value" id="hikesCount">3</div>
+        </div>
+        <div class="stat-item">
+          <div>Średni dystans</div>
+          <div class="stat-value" id="avgDistance">12.1</div>
+          <div>km</div>
+        </div>
+      </div>
+    </div>
   </main>
+  <footer>
+    HikeTracker PWA ✓ Działa offline w górach
+  </footer>
   <script src="app.js"></script>
 </body>
 </html>

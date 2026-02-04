@@ -1,5 +1,5 @@
-const CACHE_NAME = 'my-pwa-cache-v1';
-const PRECACHE = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.json', '/views/offline.html'];
+const CACHE_NAME = 'hike-tracker-cache-v1';
+const PRECACHE = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.json', '/views/offline.html', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

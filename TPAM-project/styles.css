@@ -1,9 +1,9 @@
 /* Modern PWA Styles — Flexbox, Responsive, Beautiful Visuals */
 :root {
-  --primary: #2196f3;
-  --primary-gradient: linear-gradient(135deg, #2196f3 0%, #21cbf3 100%);
+  --primary: #2d5016;
+  --primary-gradient: linear-gradient(135deg, #2d5016 0%, #4a7c59 100%);
   --secondary: #ff9800;
-  --bg: #f8f9fb;
+  --bg: #f5f1e6;
   --card-bg: #ffffff;
   --text: #333;
   --text-light: #666;
@@ -248,41 +248,129 @@ button.secondary:hover {
   }
 }
 
-/* Responsive */
-@media (max-width: 800px) {
-  .main-layout {
-    flex-direction: column;
-  }
-  aside {
-    min-width: auto;
-  }
-  nav {
-    flex-wrap: wrap;
-  }
-  .site-title {
-    font-size: 1.25rem;
-  }
+/* Card styles for HikeTracker */
+.card {
+  background: var(--card-bg);
+  padding: 20px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+  transition: var(--transition);
 }
 
-@media (max-width: 480px) {
-  header {
-    padding: 12px 16px;
+.card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+.card h2 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 1.25rem;
+}
+
+.map-placeholder {
+  height: 300px;
+  background: #ddd;
+  border-radius: var(--border-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-light);
+  font-style: italic;
+}
+
+.quick-start {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 16px;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+footer {
+  text-align: center;
+  padding: 16px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* Tracking layout for 3 columns */
+.tracking-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.tracking-column {
+  flex: 1;
+  min-width: 0; /* Allow shrinking */
+}
+
+.stats-live {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stats-live div {
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.start-btn {
+  background: var(--primary-gradient);
+  font-size: 1.1rem;
+  padding: 14px 20px;
+}
+
+.save-btn {
+  background: #1976d2;
+  color: #fff;
+}
+
+.save-btn:hover {
+  background: #1565c0;
+}
+
+#hikePhotos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#hikePhotos img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+/* Responsive for tracking */
+@media (max-width: 800px) {
+  .tracking-layout {
     flex-direction: column;
-    gap: 12px;
-  }
-  .site-title {
-    font-size: 1.1rem;
-  }
-  nav a {
-    padding: 8px 12px;
-    font-size: 0.9rem;
-  }
-  button {
-    padding: 10px 16px;
-    font-size: 0.9rem;
-  }
-  main, aside {
-    padding: 16px;
   }
 }
 
