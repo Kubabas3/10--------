@@ -157,7 +157,7 @@ function startTracking() {
   document.getElementById('stopTracking').disabled = false;
   document.getElementById('saveHike').disabled = true;
 
-  // Initialize map if not already
+
   const trackingMap = document.getElementById('trackingMap');
   if (trackingMap && typeof L !== 'undefined' && !map) {
     map = L.map('trackingMap').setView([52.0691, 19.4800], 6); // view on Poland
