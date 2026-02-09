@@ -1,11 +1,20 @@
-const CACHE_NAME = 'hike-tracker-cache-v1';
-const PRECACHE = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.json', '/views/offline.html', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
+const CACHE_NAME = 'hike-tracker-cache-v3'; // Изменили версию!
+const PRECACHE = [
+  'index.html', 
+  'styles.css', 
+  'app.js', 
+  'manifest.json', 
+  'views/native.html', 
+  'views/offline.html',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting(); // Принудительно обновляем SW
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -16,26 +25,21 @@ self.addEventListener('activate', (event) => {
       })
     ))
   );
-  self.clients.claim();
+  self.clients.claim(); // Немедленно берем контроль над страницей
 });
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-
-  // Navigation requests (HTML pages): try network, fallback to cache offline page
-  if (req.mode === 'navigate' || (req.method === 'GET' && req.headers.get('accept') && req.headers.get('accept').includes('text/html'))) {
+  
+  // Стратегия: Сначала сеть, если нет интернета — кэш
+  if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-        return res;
-      }).catch(() => caches.match('/views/offline.html'))
+      fetch(req).catch(() => caches.match('views/offline.html'))
     );
     return;
   }
 
-  // Other requests: try cache first, then network
   event.respondWith(
-    caches.match(req).then((cached) => cached || fetch(req)).catch(() => caches.match('/views/offline.html'))
+    caches.match(req).then((cached) => cached || fetch(req))
   );
 });
