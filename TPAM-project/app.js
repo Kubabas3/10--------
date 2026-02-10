@@ -1,33 +1,21 @@
-/* HikeTracker: Real GPS + Smooth Demo Mode */
+/* HikeTracker: The Ultimate Multi-Tool Version */
 
-const SETTINGS = {
-  demoRadius: 0.0005, // Радиус круга
-};
+// 1. Service Worker
+if ('serviceWorker' in navigator) {
+  const path = window.location.pathname.includes('views') ? '../sw.js' : 'sw.js';
+  navigator.serviceWorker.register(path).catch(err => console.log("SW Error"));
+}
 
-let watchId = null;       
-let demoInterval = null;  
-let timerInterval = null; 
-let seconds = 0;
-let currentStream = null;
-let currentHikePhotos = [];
-
-let map = null;
-let userMarker = null;
-let routeLine = null;
-let routeCoords = []; 
-let currentLat = 0;
-let currentLng = 0;
-let isDemoMode = false;
+// Глобальное состояние
+let watchId = null, timerInterval = null, seconds = 0;
+let currentHikePhotos = [], routeCoords = [];
+let currentLat = 52.2297, currentLng = 21.0122; 
+let map = null, userMarker = null, routePath = null;
 
 const getEl = (id) => document.getElementById(id);
 
-if ('serviceWorker' in navigator) {
-  const swPath = window.location.pathname.includes('views') ? '../sw.js' : 'sw.js';
-  navigator.serviceWorker.register(swPath).catch(console.error);
-}
-
-// === HISTORIA ===
-window.renderAllData = function() {
+// === 1. ИСТОРИЯ И ОТОБРАЖЕНИЕ ===
+function renderAllData() {
   const history = JSON.parse(localStorage.getItem('savedHikes') || "[]");
   if (getEl('hikesCount')) getEl('hikesCount').textContent = history.length;
   if (getEl('totalDistance')) {
@@ -36,168 +24,178 @@ window.renderAllData = function() {
   }
 
   const list = getEl('saved-list') || getEl('recentHikes');
-  if (list) {
-    if (history.length === 0) {
-      list.innerHTML = "<li style='padding:15px;'>Brak zapisanych wędrówek</li>";
-    } else {
-      const isHistoryPage = !!getEl('saved-list');
-      const items = isHistoryPage ? [...history].reverse() : history.slice(-3).reverse();
-      list.innerHTML = items.map(h => `
-        <li class="card" style="margin-bottom:15px; border-left:5px solid var(--primary); list-style:none; background: #fff; padding: 15px; border-radius: 12px; box-shadow: var(--shadow);">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-            <div>
-              <div style="font-size:1.1rem; font-weight:bold; color:var(--primary);">${h.date}</div>
-              <div style="margin:5px 0; color:var(--text-light); font-size: 0.9rem;">
-                ⏱ ${h.time} | 📏 ${h.distance} km
-              </div>
-              ${h.photos && h.photos.length > 0 ? `
-                <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-                  ${h.photos.map(p => `<img src="${p}" onclick="window.zoomPhoto('${p}')" style="width:60px; height:60px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid #ddd;">`).join('')}
-                </div>
-              ` : ''}
-            </div>
-            ${isHistoryPage ? `<button onclick="deleteHike(${h.id})" style="background:#ff4d4d; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">Usuń</button>` : ''}
-          </div>
-        </li>
-      `).join('');
-    }
+  if (!list) return;
+
+  if (history.length === 0) {
+    list.innerHTML = "<li style='padding:15px;'>Brak zapisanych wędrówek</li>";
+    return;
   }
-};
 
-window.zoomPhoto = function(src) {
-  const overlay = document.createElement('div');
-  overlay.style.cssText = `position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; align-items:center; justify-content:center; z-index:2000; cursor:zoom-out;`;
-  const img = document.createElement('img');
-  img.src = src;
-  img.style.cssText = 'max-width:95%; max-height:95%; border-radius:8px;';
-  overlay.appendChild(img);
-  overlay.onclick = () => overlay.remove();
-  document.body.appendChild(overlay);
-};
+  const items = list.id === 'saved-list' ? [...history].reverse() : history.slice(-3).reverse();
+  list.innerHTML = items.map(h => {
+    const photosHtml = (h.photos || []).map(p => `
+      <div style="position:relative; display:inline-block; margin:5px;">
+        <img src="${p.url}" onclick="showPhotoMap('${p.url}', ${p.lat}, ${p.lng})" 
+             style="width:70px; height:70px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid #ddd;">
+      </div>`).join('');
 
-// === MAPA I LOGIKA ===
-function initMap(lat, lng) {
-  if (map) return;
-  map = L.map('trackingMap').setView([lat, lng], 16);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-  userMarker = L.marker([lat, lng]).addTo(map);
-  routeLine = L.polyline([], {color: '#d32f2f', weight: 4}).addTo(map);
+    return `
+      <li class="card" style="margin-bottom:15px; list-style:none; padding:15px; border-left:5px solid #2d5016; background:#fff; border-radius:10px;">
+        <div style="font-weight:bold; color:#2d5016;">${h.date}</div>
+        <div style="font-size:0.85rem; color:#666;">⏱ ${h.time} | 📏 ${h.distance} km</div>
+        <div style="margin-top:10px; display:flex; flex-wrap:wrap;">${photosHtml}</div>
+        ${list.id === 'saved-list' ? `<button onclick="deleteHike(${h.id})" style="background:#ff4d4d; color:white; border:none; padding:5px 10px; border-radius:6px; margin-top:10px; cursor:pointer;">Usuń</button>` : ''}
+      </li>`;
+  }).join('');
 }
 
-function updateMapPosition(lat, lng) {
-  if (!map) return initMap(lat, lng);
-  const newLatLng = [lat, lng];
-  userMarker.setLatLng(newLatLng);
-  if (!isDemoMode || seconds % 5 === 0) map.panTo(newLatLng);
-  routeCoords.push(newLatLng);
-  routeLine.setLatLngs(routeCoords);
-  if(getEl('pointsCount')) getEl('pointsCount').textContent = routeCoords.length;
+window.deleteHike = function(id) {
+    if(!confirm("Usunąć?")) return;
+    let history = JSON.parse(localStorage.getItem('savedHikes') || "[]");
+    history = history.filter(h => h.id !== id);
+    localStorage.setItem('savedHikes', JSON.stringify(history));
+    renderAllData();
+};
+
+// Просмотр фото с картой
+window.showPhotoMap = function(url, lat, lng) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10000; padding:15px;`;
+    overlay.innerHTML = `
+        <img src="${url}" style="max-width:95%; max-height:50%; border-radius:10px; margin-bottom:15px; border:2px solid #fff;">
+        <div id="miniMap" style="width:100%; max-width:450px; height:250px; border-radius:10px; background:#fff;"></div>
+        <button id="closeBtn" style="margin-top:20px; padding:15px 35px; border-radius:30px; border:none; background:#fff; font-weight:bold; cursor:pointer;">Zamknij</button>
+    `;
+    document.body.appendChild(overlay);
+    getEl('closeBtn').onclick = () => overlay.remove();
+
+    if (lat && lng && window.L) {
+        setTimeout(() => {
+            const m = L.map('miniMap', { zoomControl: false }).setView([lat, lng], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m);
+            L.marker([lat, lng]).addTo(m);
+            setTimeout(() => m.invalidateSize(), 200);
+        }, 300);
+    }
+};
+
+// === 2. ЛОГИКА ТРЕКИНГА (NATIVE.HTML) ===
+function updatePosition(lat, lng) {
+    currentLat = lat; currentLng = lng;
+    const pos = [lat, lng];
+
+    if (!map && getEl('trackingMap')) {
+        map = L.map('trackingMap').setView(pos, 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        userMarker = L.marker(pos).addTo(map);
+        routePath = L.polyline([], {color: '#d32f2f', weight: 5, opacity: 0.8}).addTo(map);
+    }
+
+    if (map) {
+        userMarker.setLatLng(pos);
+        map.panTo(pos);
+        routeCoords.push(pos);
+        routePath.setLatLngs(routeCoords);
+        if (getEl('pointsCount')) getEl('pointsCount').textContent = routeCoords.length;
+        if (getEl('liveDistance')) getEl('liveDistance').textContent = (routeCoords.length * 0.005).toFixed(3);
+    }
 }
 
-function startCommon() {
-  seconds = 0; currentHikePhotos = []; routeCoords = [];
+function startTracking() {
+  if (!navigator.geolocation) return alert("GPS niedostępny");
+  seconds = 0; routeCoords = []; currentHikePhotos = [];
   if (getEl('photoGallery')) getEl('photoGallery').innerHTML = '';
-  if (timerInterval) clearInterval(timerInterval);
+
   timerInterval = setInterval(() => {
     seconds++;
     const time = new Date(seconds * 1000).toISOString().substr(11, 8);
     if (getEl('liveTimer')) getEl('liveTimer').textContent = time;
   }, 1000);
+
+  watchId = navigator.geolocation.watchPosition(pos => {
+    updatePosition(pos.coords.latitude, pos.coords.longitude);
+  }, null, { enableHighAccuracy: true });
+
   getEl('startTracking').disabled = true;
-  getEl('startDemo').disabled = true;
   getEl('stopTracking').disabled = false;
   getEl('saveHike').disabled = false;
 }
 
-window.startRealTracking = function() {
-  if (!navigator.geolocation) return alert("Brak GPS");
-  isDemoMode = false; startCommon();
-  navigator.geolocation.getCurrentPosition(pos => initMap(pos.coords.latitude, pos.coords.longitude));
-  watchId = navigator.geolocation.watchPosition(pos => {
-    updateMapPosition(pos.coords.latitude, pos.coords.longitude);
-    if (getEl('liveSpeed')) getEl('liveSpeed').textContent = (pos.coords.speed * 3.6 || 0).toFixed(1);
-    const distEl = getEl('liveDistance');
-    if (distEl && pos.coords.speed > 0.5) distEl.textContent = (parseFloat(distEl.textContent) + 0.001).toFixed(3);
-  }, null, { enableHighAccuracy: true });
-};
-
-window.startDemoMode = function() {
-  isDemoMode = true; startCommon();
-  navigator.geolocation.getCurrentPosition(pos => {
-    const sLat = pos.coords.latitude, sLng = pos.coords.longitude;
-    initMap(sLat, sLng);
-    demoInterval = setInterval(() => {
-      const t = seconds * 0.2; // Плавность движения
-      currentLat = sLat + (Math.sin(t) * SETTINGS.demoRadius);
-      currentLng = sLng + (Math.cos(t) * SETTINGS.demoRadius * 1.5);
-      updateMapPosition(currentLat, currentLng);
-      if (getEl('liveDistance')) getEl('liveDistance').textContent = (parseFloat(getEl('liveDistance').textContent) + 0.003).toFixed(3);
-      if (getEl('liveSpeed')) getEl('liveSpeed').textContent = "4.5";
-    }, 1000);
-  });
-};
-
-window.stopAll = function() {
+function stopTracking() {
   if (watchId) navigator.geolocation.clearWatch(watchId);
-  if (demoInterval) clearInterval(demoInterval);
+  watchId = null;
   if (timerInterval) clearInterval(timerInterval);
   getEl('startTracking').disabled = false;
-  getEl('startDemo').disabled = false;
   getEl('stopTracking').disabled = true;
-};
+}
 
-window.saveHikeData = function() {
+// Кнопка ДЕМО
+function runDemo() {
+    startTracking();
+    let step = 0;
+    const demoInt = setInterval(() => {
+        if (!getEl('stopTracking') || getEl('stopTracking').disabled) return clearInterval(demoInt);
+        updatePosition(currentLat + 0.0003, currentLng + (step % 2 ? 0.0002 : -0.0002));
+        step++;
+        if (step > 30) clearInterval(demoInt);
+    }, 1500);
+}
+
+function saveHikeData() {
   const hike = {
     id: Date.now(),
-    date: new Date().toLocaleDateString('pl-PL') + ' ' + new Date().toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'}),
+    date: new Date().toLocaleString('pl-PL'),
     distance: getEl('liveDistance')?.textContent || "0.0",
     time: getEl('liveTimer')?.textContent || "00:00:00",
-    photos: currentHikePhotos
+    photos: currentHikePhotos 
   };
   const history = JSON.parse(localStorage.getItem('savedHikes') || "[]");
   history.push(hike);
   localStorage.setItem('savedHikes', JSON.stringify(history));
-  alert("Wędrówka zapisana!");
   window.location.href = "../index.html";
-};
+}
 
-// === KAMERA ===
-window.initCamera = async function() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-    getEl('cameraPreview').srcObject = stream;
-    currentStream = stream;
-    getEl('enableCamera').disabled = true;
-    getEl('disableCamera').disabled = false;
-  } catch (e) { alert("Błąd kamery"); }
-};
+// === 3. КАМЕРА ===
+async function toggleCamera(enable) {
+    const video = getEl('cameraPreview');
+    if (enable) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream;
+            getEl('enableCamera').disabled = true;
+            getEl('disableCamera').disabled = false;
+        } catch (e) { alert("Błąd kamery!"); }
+    } else {
+        const stream = video.srcObject;
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+        getEl('enableCamera').disabled = false;
+        getEl('disableCamera').disabled = true;
+    }
+}
 
-window.takePhoto = function() {
+function takePhoto() {
   const v = getEl('cameraPreview');
-  if (!v.srcObject) return alert("Włącz kamerę!");
+  if (!v || !v.srcObject) return alert("Włącz kamerę!");
   const canvas = document.createElement('canvas');
-  canvas.width = 800; canvas.height = (v.videoHeight/v.videoWidth)*800;
-  canvas.getContext('2d').drawImage(v, 0, 0, canvas.width, canvas.height);
-  const data = canvas.toDataURL('image/jpeg', 0.8);
-  currentHikePhotos.push(data);
+  canvas.width = 640; canvas.height = 480;
+  canvas.getContext('2d').drawImage(v, 0, 0, 640, 480);
+  const url = canvas.toDataURL('image/jpeg', 0.7);
+  currentHikePhotos.push({ url: url, lat: currentLat, lng: currentLng });
   const img = document.createElement('img');
-  img.src = data; img.style.cssText = "width:70px;height:70px;object-fit:cover;margin:5px;border-radius:8px;cursor:pointer;";
-  img.onclick = () => window.zoomPhoto(data);
+  img.src = url;
+  img.style.cssText = "width:60px; height:60px; object-fit:cover; margin:5px; border-radius:8px; border:2px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,0.2);";
   getEl('photoGallery').appendChild(img);
-};
+}
 
-window.addEventListener('load', () => {
-  window.renderAllData();
-  const bind = (id, fn) => { if (getEl(id)) getEl(id).onclick = fn; };
-  bind('startTracking', window.startRealTracking);
-  bind('startDemo', window.startDemoMode);
-  bind('stopTracking', window.stopAll);
-  bind('saveHike', window.saveHikeData);
-  bind('enableCamera', window.initCamera);
-  bind('takePhoto', window.takePhoto);
-  bind('disableCamera', () => {
-    if (currentStream) currentStream.getTracks().forEach(t => t.stop());
-    getEl('enableCamera').disabled = false;
-    getEl('disableCamera').disabled = true;
-  });
+// Инициализация событий
+document.addEventListener('DOMContentLoaded', () => {
+  renderAllData();
+  if (getEl('startTracking')) getEl('startTracking').onclick = startTracking;
+  if (getEl('stopTracking')) getEl('stopTracking').onclick = stopTracking;
+  if (getEl('saveHike')) getEl('saveHike').onclick = saveHikeData;
+  if (getEl('demoMode')) getEl('demoMode').onclick = runDemo;
+  if (getEl('takePhoto')) getEl('takePhoto').onclick = takePhoto;
+  if (getEl('enableCamera')) getEl('enableCamera').onclick = () => toggleCamera(true);
+  if (getEl('disableCamera')) getEl('disableCamera').onclick = () => toggleCamera(false);
 });
