@@ -1,4 +1,4 @@
-/* Modern PWA Styles — Flexbox, Responsive, Beautiful Visuals */
+/* HikeTracker: Professional Responsive Styles */
 :root {
   --primary: #2d5016;
   --primary-gradient: linear-gradient(135deg, #2d5016 0%, #4a7c59 100%);
@@ -15,362 +15,176 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent; /* Убирает синий блик при клике на мобилках */
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   margin: 0;
   color: var(--text);
   background: var(--bg);
   line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ШАПКА */
 header {
   background: var(--primary-gradient);
   color: #fff;
-  padding: 16px 20px;
+  padding: 12px 20px;
   display: flex;
+  flex-wrap: wrap; /* Чтобы меню переносилось на узких экранах */
   align-items: center;
   justify-content: space-between;
   box-shadow: var(--shadow);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .site-title {
   font-weight: 700;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   margin: 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 nav {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  gap: 5px;
 }
 
 nav a {
   color: #fff;
   text-decoration: none;
-  padding: 10px 16px;
-  border-radius: var(--border-radius);
-  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
   transition: var(--transition);
-  position: relative;
-  overflow: hidden;
-}
-
-nav a::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.2);
-  transition: left 0.3s ease;
-}
-
-nav a:hover::before {
-  left: 0;
 }
 
 nav a.active {
-  background: rgba(255, 255, 255, 0.15);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.container {
-  max-width: 1200px;
-  margin: 20px auto;
-  padding: 0 20px;
-}
-
-.main-layout {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-aside {
-  min-width: 240px;
-  background: var(--card-bg);
-  padding: 20px;
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow);
-}
-
-main {
-  flex: 1;
-  background: var(--card-bg);
-  padding: 24px;
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow);
-  transition: var(--transition);
-}
-
-main:hover {
-  box-shadow: var(--shadow-hover);
-}
-
-h1, h2, h3 {
-  margin-top: 0;
-  color: var(--text);
-  font-weight: 600;
-}
-
-h1 {
-  font-size: 2rem;
-  margin-bottom: 16px;
-}
-
-h2 {
-  font-size: 1.5rem;
-  margin-bottom: 12px;
-}
-
-.controls {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-}
-
-button {
-  background: var(--primary-gradient);
-  color: #fff;
-  border: none;
-  padding: 12px 20px;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: var(--transition);
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
-  position: relative;
-  overflow: hidden;
-}
-
-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
   background: rgba(255, 255, 255, 0.2);
-  transition: left 0.4s ease;
 }
 
-button:hover::before {
-  left: 0;
+/* КОНТЕЙНЕРЫ */
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 15px;
 }
 
-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.4);
-}
-
-button:active {
-  transform: translateY(0);
-}
-
-button.secondary {
-  background: var(--card-bg);
-  color: var(--primary);
-  border: 2px solid var(--primary);
-  box-shadow: none;
-}
-
-button.secondary:hover {
-  background: var(--primary);
-  color: #fff;
-}
-
-#camera-preview {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  border-radius: var(--border-radius);
-  margin-top: 12px;
-  box-shadow: var(--shadow);
-}
-
-#saved-list {
-  list-style: none;
-  padding: 0;
-}
-
-#saved-list li {
-  background: var(--bg);
-  padding: 12px 16px;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  border-left: 4px solid var(--primary);
-  transition: var(--transition);
-}
-
-#saved-list li:hover {
-  background: #e3f2fd;
-  transform: translateX(4px);
-}
-
-.toast {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  background: linear-gradient(135deg, #333 0%, #555 100%);
-  color: #fff;
-  padding: 16px 20px;
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow-hover);
-  display: none;
-  font-weight: 500;
-  animation: slideIn 0.3s ease;
-}
-
-.toast.show {
-  display: block;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Card styles for HikeTracker */
 .card {
   background: var(--card-bg);
   padding: 20px;
   border-radius: var(--border-radius);
   box-shadow: var(--shadow);
   margin-bottom: 20px;
-  transition: var(--transition);
 }
 
-.card:hover {
-  box-shadow: var(--shadow-hover);
-}
-
-.card h2 {
-  margin-top: 0;
-  color: var(--primary);
-  font-size: 1.25rem;
-}
-
-.map-placeholder {
-  height: 300px;
-  background: #ddd;
-  border-radius: var(--border-radius);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-light);
-  font-style: italic;
-}
-
-.quick-start {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-}
-
-.stat-item {
-  text-align: center;
-  padding: 16px;
-  background: var(--bg);
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--primary);
-}
-
-footer {
-  text-align: center;
-  padding: 16px;
-  background: var(--primary);
-  color: #fff;
-  font-weight: 500;
-}
-
-/* Tracking layout for 3 columns */
+/* ТРЕКИНГ (NATIVE.HTML) — 3 КОЛОНКИ */
 .tracking-layout {
   display: flex;
   gap: 20px;
-  align-items: flex-start;
 }
 
 .tracking-column {
   flex: 1;
-  min-width: 0; /* Allow shrinking */
+  min-width: 0;
 }
 
-.stats-live {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* КАРТА */
+#trackingMap {
+  width: 100%;
+  height: 400px; /* Фиксированная высота для стабильности */
+  border-radius: var(--border-radius);
+  background: #eee;
+  z-index: 1;
 }
 
-.stats-live div {
-  padding: 8px 12px;
-  background: var(--bg);
-  border-radius: 6px;
-  font-weight: 500;
+/* КАМЕРА */
+#cameraPreview {
+  width: 100%;
+  max-width: 100%;
+  border-radius: var(--border-radius);
+  background: #000;
 }
 
-.start-btn {
-  background: var(--primary-gradient);
-  font-size: 1.1rem;
-  padding: 14px 20px;
-}
-
-.save-btn {
-  background: #1976d2;
-  color: #fff;
-}
-
-.save-btn:hover {
-  background: #1565c0;
-}
-
-#hikePhotos {
+.photo-gallery {
   display: flex;
   flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* КНОПКИ */
+.controls {
+  display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
 }
 
-#hikePhotos img {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid #ddd;
+button {
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-/* Responsive for tracking */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.start-btn { background: #4caf50; color: white; }
+.save-btn { background: #2196f3; color: white; }
+.secondary { background: #eee; color: #333; }
+
+/* АДАПТИВНОСТЬ ДЛЯ ТЕЛЕФОНОВ */
 @media (max-width: 800px) {
   .tracking-layout {
+    flex-direction: column; /* Колонки друг под другом */
+  }
+  
+  header {
     flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  button {
+    width: 100%; /* Кнопки на весь экран */
+  }
+
+  #trackingMap {
+    height: 300px; /* На мобилках карта чуть меньше */
   }
 }
 
+/* ФИКС МОДАЛЬНОГО ОКНА (ИСТОРИЯ) */
+#miniMap {
+  width: 100% !important;
+  height: 250px !important; /* Гарантирует, что карта не будет белым пятном */
+  margin-top: 10px;
+  border-radius: 10px;
+}
+
+/* ИСТОРИЯ (СПИСОК) */
+#saved-list {
+  padding: 0;
+  list-style: none;
+}
+
+.hike-item {
+  border-left: 5px solid var(--primary);
+  background: #fff;
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 0 10px 10px 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
