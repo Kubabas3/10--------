@@ -3,27 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#2d5016">
-  <link rel="manifest" href="../manifest.json">
+  <meta name="theme-color" content="#2d5016"> <link rel="manifest" href="../manifest.json">
   <link rel="stylesheet" href="../styles.css">
+  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
   <title>Historia — HikeTracker</title>
 </head>
 <body>
   <header>
     <h1 class="site-title">HikeTracker 🏔️</h1>
     <nav>
-      <a href="../index.html">Główna</a> |
-      <a href="native.html">Wędrówka</a> |
+      <a href="../index.html">Główna</a>
+      <a href="native.html">Wędrówka</a>
       <a href="offline.html" class="active">Historia</a>
     </nav>
   </header>
   <main>
     <h1>Historia wędrówek</h1>
-    <div id="history-container">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin:0;">Zapisane wędrówki</h2>
+        <span id="hikesCount" style="background:var(--primary); color:white; padding:2px 10px; border-radius:15px; font-size:0.8rem;">0</span>
+      </div>
       <ul id="saved-list">
-        <li>Ładowanie historii...</li>
+        <li>Brak zapisanych wędrówek</li>
       </ul>
     </div>
   </main>
