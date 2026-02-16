@@ -1,37 +1,61 @@
-const CACHE_NAME = 'hike-tracker-v5'; // Подняли версию
-const PRECACHE = [
-  'index.html', 
-  'styles.css', 
-  'app.js', 
-  'manifest.json',
-  'views/native.html', 
-  'views/offline.html'
+const CACHE_NAME = 'hiketracker-v2';
+
+const ASSETS_TO_CACHE = [
+  '/',
+  '/index.html',
+  '/styles.css',
+  '/app.js',
+  '/manifest.json',
+  '/views/native.html',
+  '/views/offline.html',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
-self.addEventListener('install', (e) => {
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('Кэшируем ресурсы приложения');
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
+  );
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(PRECACHE)));
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(
-    keys.map(k => k !== CACHE_NAME && caches.delete(k))
-  )));
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+      );
+    })
+  );
 });
+
 
 self.addEventListener('fetch', (event) => {
-  const req = event.request;
-
-  // ИСПРАВЛЕНИЕ: Fallback только для HTML-страниц
-  if (req.mode === 'navigate') {
+  
+  if (event.request.url.includes('tile.openstreetmap.org')) {
     event.respondWith(
-      fetch(req).catch(() => caches.match('views/offline.html'))
+      fetch(event.request).catch(() => {
+        
+        return new Response(''); 
+      })
     );
     return;
   }
 
-  // Для всего остального (js, css, img): сначала кеш, потом сеть
   event.respondWith(
-    caches.match(req).then(cached => cached || fetch(req))
+    caches.match(event.request).then((response) => {
+      
+      return response || fetch(event.request).catch(() => {
+        
+        if (event.request.mode === 'navigate') {
+          return caches.match('/views/offline.html');
+        }
+      });
+    })
   );
 });

@@ -1,4 +1,3 @@
-/* HikeTracker: The Ultimate Multi-Tool Version */
 
 // 1. Service Worker
 if ('serviceWorker' in navigator) {
@@ -14,7 +13,7 @@ let map = null, userMarker = null, routePath = null;
 
 const getEl = (id) => document.getElementById(id);
 
-// === 1. ИСТОРИЯ И ОТОБРАЖЕНИЕ ===
+// ИСТОРИЯ И ОТОБРАЖЕНИЕ 
 function renderAllData() {
   const history = JSON.parse(localStorage.getItem('savedHikes') || "[]");
   if (getEl('hikesCount')) getEl('hikesCount').textContent = history.length;
@@ -79,7 +78,7 @@ window.showPhotoMap = function(url, lat, lng) {
     }
 };
 
-// === 2. ЛОГИКА ТРЕКИНГА (NATIVE.HTML) ===
+//2. ЛОГИКА ТРЕКИНГА 
 function updatePosition(lat, lng) {
     currentLat = lat; currentLng = lng;
     const pos = [lat, lng];
@@ -155,7 +154,7 @@ function saveHikeData() {
   window.location.href = "../index.html";
 }
 
-// === 3. КАМЕРА ===
+// 3. КАМЕРА 
 async function toggleCamera(enable) {
     const video = getEl('cameraPreview');
     if (enable) {
