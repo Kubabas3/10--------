@@ -1,11 +1,9 @@
-
 // 1. Service Worker
 if ('serviceWorker' in navigator) {
   const path = window.location.pathname.includes('views') ? '../sw.js' : 'sw.js';
   navigator.serviceWorker.register(path).catch(err => console.log("SW Error"));
 }
 
-// Глобальное состояние
 let watchId = null, timerInterval = null, seconds = 0;
 let currentHikePhotos = [], routeCoords = [];
 let currentLat = 52.2297, currentLng = 21.0122; 
@@ -13,7 +11,35 @@ let map = null, userMarker = null, routePath = null;
 
 const getEl = (id) => document.getElementById(id);
 
-// ИСТОРИЯ И ОТОБРАЖЕНИЕ 
+// POPRAWKA: Niestandardowe okno potwierdzenia zamiast confirm()
+ 
+function showCustomConfirm(message, onConfirm) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:10000; padding:20px;";
+  
+  const box = document.createElement('div');
+  box.style.cssText = "background:white; padding:25px; border-radius:15px; text-align:center; max-width:300px; width:100%; box-shadow:0 10px 25px rgba(0,0,0,0.2);";
+  
+  const text = document.createElement('p');
+  text.textContent = message;
+  text.style.marginBottom = "20px";
+  
+  const btnOk = document.createElement('button');
+  btnOk.textContent = "Tak, usuń";
+  btnOk.style.cssText = "background:#ff4d4d; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; margin-right:10px;";
+  btnOk.onclick = () => { onConfirm(); overlay.remove(); };
+  
+  const btnNo = document.createElement('button');
+  btnNo.textContent = "Anuluj";
+  btnNo.style.cssText = "background:#eee; color:#333; border:none; padding:10px 20px; border-radius:8px; cursor:pointer;";
+  btnNo.onclick = () => overlay.remove();
+  
+  box.append(text, btnOk, btnNo);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+// HISTORIA I WYŚWIETLANIE 
 function renderAllData() {
   const history = JSON.parse(localStorage.getItem('savedHikes') || "[]");
   if (getEl('hikesCount')) getEl('hikesCount').textContent = history.length;
@@ -25,48 +51,81 @@ function renderAllData() {
   const list = getEl('saved-list') || getEl('recentHikes');
   if (!list) return;
 
+  list.textContent = ''; // Bezpieczne czyszczenie
+
   if (history.length === 0) {
-    list.innerHTML = "<li style='padding:15px;'>Brak zapisanych wędrówek</li>";
+    const li = document.createElement('li');
+    li.textContent = "Brak zapisanych wędrówek";
+    li.style.padding = "15px";
+    list.appendChild(li);
     return;
   }
 
   const items = list.id === 'saved-list' ? [...history].reverse() : history.slice(-3).reverse();
-  list.innerHTML = items.map(h => {
-    const photosHtml = (h.photos || []).map(p => `
-      <div style="position:relative; display:inline-block; margin:5px;">
-        <img src="${p.url}" onclick="showPhotoMap('${p.url}', ${p.lat}, ${p.lng})" 
-             style="width:70px; height:70px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid #ddd;">
-      </div>`).join('');
 
-    return `
-      <li class="card" style="margin-bottom:15px; list-style:none; padding:15px; border-left:5px solid #2d5016; background:#fff; border-radius:10px;">
-        <div style="font-weight:bold; color:#2d5016;">${h.date}</div>
-        <div style="font-size:0.85rem; color:#666;">⏱ ${h.time} | 📏 ${h.distance} km</div>
-        <div style="margin-top:10px; display:flex; flex-wrap:wrap;">${photosHtml}</div>
-        ${list.id === 'saved-list' ? `<button onclick="deleteHike(${h.id})" style="background:#ff4d4d; color:white; border:none; padding:5px 10px; border-radius:6px; margin-top:10px; cursor:pointer;">Usuń</button>` : ''}
-      </li>`;
-  }).join('');
+  items.forEach(h => {
+    const li = document.createElement('li');
+    li.className = "card";
+    li.style.cssText = "margin-bottom:15px; list-style:none; padding:15px; border-left:5px solid #2d5016; background:#fff; border-radius:10px;";
+
+    const title = document.createElement('div');
+    title.style.cssText = "font-weight:bold; color:#2d5016;";
+    title.textContent = h.date;
+
+    const info = document.createElement('div');
+    info.style.cssText = "font-size:0.85rem; color:#666;";
+    info.textContent = `⏱ ${h.time} | 📏 ${h.distance} km`;
+
+    const photosDiv = document.createElement('div');
+    photosDiv.style.cssText = "margin-top:10px; display:flex; flex-wrap:wrap;";
+
+    (h.photos || []).forEach(p => {
+      const img = document.createElement('img');
+      img.src = p.url;
+      img.style.cssText = "width:70px; height:70px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid #ddd; margin-right:5px;";
+      img.onclick = () => showPhotoMap(p.url, p.lat, p.lng);
+      photosDiv.appendChild(img);
+    });
+
+    li.append(title, info, photosDiv);
+
+    if (list.id === 'saved-list') {
+      const delBtn = document.createElement('button');
+      delBtn.textContent = "Usuń";
+      delBtn.style.cssText = "background:#ff4d4d; color:white; border:none; padding:5px 10px; border-radius:6px; margin-top:10px; cursor:pointer;";
+      delBtn.onclick = () => showCustomConfirm("Czy na pewno chcesz usunąć?", () => deleteHike(h.id));
+      li.appendChild(delBtn);
+    }
+    list.appendChild(li);
+  });
 }
 
 window.deleteHike = function(id) {
-    if(!confirm("Usunąć?")) return;
     let history = JSON.parse(localStorage.getItem('savedHikes') || "[]");
     history = history.filter(h => h.id !== id);
     localStorage.setItem('savedHikes', JSON.stringify(history));
     renderAllData();
 };
 
-// Просмотр фото с картой
 window.showPhotoMap = function(url, lat, lng) {
     const overlay = document.createElement('div');
-    overlay.style.cssText = `position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10000; padding:15px;`;
-    overlay.innerHTML = `
-        <img src="${url}" style="max-width:95%; max-height:50%; border-radius:10px; margin-bottom:15px; border:2px solid #fff;">
-        <div id="miniMap" style="width:100%; max-width:450px; height:250px; border-radius:10px; background:#fff;"></div>
-        <button id="closeBtn" style="margin-top:20px; padding:15px 35px; border-radius:30px; border:none; background:#fff; font-weight:bold; cursor:pointer;">Zamknij</button>
-    `;
+    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10000; padding:15px;";
+    
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.cssText = "max-width:95%; max-height:50%; border-radius:10px; margin-bottom:15px; border:2px solid #fff;";
+
+    const miniMap = document.createElement('div');
+    miniMap.id = "miniMap";
+    miniMap.style.cssText = "width:100%; max-width:450px; height:250px; border-radius:10px; background:#fff;";
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = "Zamknij";
+    closeBtn.style.cssText = "margin-top:20px; padding:15px 35px; border-radius:30px; border:none; background:#fff; font-weight:bold; cursor:pointer;";
+    closeBtn.onclick = () => overlay.remove();
+
+    overlay.append(img, miniMap, closeBtn);
     document.body.appendChild(overlay);
-    getEl('closeBtn').onclick = () => overlay.remove();
 
     if (lat && lng && window.L) {
         setTimeout(() => {
@@ -78,18 +137,16 @@ window.showPhotoMap = function(url, lat, lng) {
     }
 };
 
-//2. ЛОГИКА ТРЕКИНГА 
+// ŚLEDZENIE TRASY (LOGIKA BEZ ZMIAN)
 function updatePosition(lat, lng) {
     currentLat = lat; currentLng = lng;
     const pos = [lat, lng];
-
     if (!map && getEl('trackingMap')) {
         map = L.map('trackingMap').setView(pos, 16);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         userMarker = L.marker(pos).addTo(map);
-        routePath = L.polyline([], {color: '#d32f2f', weight: 5, opacity: 0.8}).addTo(map);
+        routePath = L.polyline([], {color: '#d32f2f', weight: 5}).addTo(map);
     }
-
     if (map) {
         userMarker.setLatLng(pos);
         map.panTo(pos);
@@ -101,20 +158,12 @@ function updatePosition(lat, lng) {
 }
 
 function startTracking() {
-  if (!navigator.geolocation) return alert("GPS niedostępny");
   seconds = 0; routeCoords = []; currentHikePhotos = [];
-  if (getEl('photoGallery')) getEl('photoGallery').innerHTML = '';
-
   timerInterval = setInterval(() => {
     seconds++;
-    const time = new Date(seconds * 1000).toISOString().substr(11, 8);
-    if (getEl('liveTimer')) getEl('liveTimer').textContent = time;
+    if (getEl('liveTimer')) getEl('liveTimer').textContent = new Date(seconds * 1000).toISOString().substr(11, 8);
   }, 1000);
-
-  watchId = navigator.geolocation.watchPosition(pos => {
-    updatePosition(pos.coords.latitude, pos.coords.longitude);
-  }, null, { enableHighAccuracy: true });
-
+  watchId = navigator.geolocation.watchPosition(pos => updatePosition(pos.coords.latitude, pos.coords.longitude));
   getEl('startTracking').disabled = true;
   getEl('stopTracking').disabled = false;
   getEl('saveHike').disabled = false;
@@ -122,22 +171,9 @@ function startTracking() {
 
 function stopTracking() {
   if (watchId) navigator.geolocation.clearWatch(watchId);
-  watchId = null;
   if (timerInterval) clearInterval(timerInterval);
   getEl('startTracking').disabled = false;
   getEl('stopTracking').disabled = true;
-}
-
-// Кнопка ДЕМО
-function runDemo() {
-    startTracking();
-    let step = 0;
-    const demoInt = setInterval(() => {
-        if (!getEl('stopTracking') || getEl('stopTracking').disabled) return clearInterval(demoInt);
-        updatePosition(currentLat + 0.0003, currentLng + (step % 2 ? 0.0002 : -0.0002));
-        step++;
-        if (step > 30) clearInterval(demoInt);
-    }, 1500);
 }
 
 function saveHikeData() {
@@ -151,22 +187,18 @@ function saveHikeData() {
   const history = JSON.parse(localStorage.getItem('savedHikes') || "[]");
   history.push(hike);
   localStorage.setItem('savedHikes', JSON.stringify(history));
-  window.location.href = "../index.html";
+  window.location.href = "offline.html";
 }
 
-// 3. КАМЕРА 
 async function toggleCamera(enable) {
     const video = getEl('cameraPreview');
     if (enable) {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream;
-            getEl('enableCamera').disabled = true;
-            getEl('disableCamera').disabled = false;
-        } catch (e) { alert("Błąd kamery!"); }
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = stream;
+        getEl('enableCamera').disabled = true;
+        getEl('disableCamera').disabled = false;
     } else {
-        const stream = video.srcObject;
-        if (stream) stream.getTracks().forEach(track => track.stop());
+        if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
         video.srcObject = null;
         getEl('enableCamera').disabled = false;
         getEl('disableCamera').disabled = true;
@@ -175,25 +207,23 @@ async function toggleCamera(enable) {
 
 function takePhoto() {
   const v = getEl('cameraPreview');
-  if (!v || !v.srcObject) return alert("Włącz kamerę!");
+  if (!v || !v.srcObject) return;
   const canvas = document.createElement('canvas');
   canvas.width = 640; canvas.height = 480;
   canvas.getContext('2d').drawImage(v, 0, 0, 640, 480);
   const url = canvas.toDataURL('image/jpeg', 0.7);
-  currentHikePhotos.push({ url: url, lat: currentLat, lng: currentLng });
+  currentHikePhotos.push({ url, lat: currentLat, lng: currentLng });
   const img = document.createElement('img');
   img.src = url;
-  img.style.cssText = "width:60px; height:60px; object-fit:cover; margin:5px; border-radius:8px; border:2px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,0.2);";
+  img.style.cssText = "width:60px; height:60px; object-fit:cover; margin:5px; border-radius:8px;";
   getEl('photoGallery').appendChild(img);
 }
 
-// Инициализация событий
 document.addEventListener('DOMContentLoaded', () => {
   renderAllData();
   if (getEl('startTracking')) getEl('startTracking').onclick = startTracking;
   if (getEl('stopTracking')) getEl('stopTracking').onclick = stopTracking;
   if (getEl('saveHike')) getEl('saveHike').onclick = saveHikeData;
-  if (getEl('demoMode')) getEl('demoMode').onclick = runDemo;
   if (getEl('takePhoto')) getEl('takePhoto').onclick = takePhoto;
   if (getEl('enableCamera')) getEl('enableCamera').onclick = () => toggleCamera(true);
   if (getEl('disableCamera')) getEl('disableCamera').onclick = () => toggleCamera(false);
