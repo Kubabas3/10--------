@@ -1,4 +1,4 @@
-// 1. Service Worker
+
 if ('serviceWorker' in navigator) {
   const path = window.location.pathname.includes('views') ? '../sw.js' : 'sw.js';
   navigator.serviceWorker.register(path).catch(err => console.log("SW Error"));
@@ -11,8 +11,7 @@ let map = null, userMarker = null, routePath = null;
 
 const getEl = (id) => document.getElementById(id);
 
-// POPRAWKA: Niestandardowe okno potwierdzenia zamiast confirm()
- 
+// Własne okno potwierdzenia
 function showCustomConfirm(message, onConfirm) {
   const overlay = document.createElement('div');
   overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:10000; padding:20px;";
@@ -39,7 +38,7 @@ function showCustomConfirm(message, onConfirm) {
   document.body.appendChild(overlay);
 }
 
-// HISTORIA I WYŚWIETLANIE 
+// Obsługa historii i widoku
 function renderAllData() {
   const history = JSON.parse(localStorage.getItem('savedHikes') || "[]");
   if (getEl('hikesCount')) getEl('hikesCount').textContent = history.length;
@@ -51,7 +50,7 @@ function renderAllData() {
   const list = getEl('saved-list') || getEl('recentHikes');
   if (!list) return;
 
-  list.textContent = ''; // Bezpieczne czyszczenie
+  list.textContent = ''; // Czyszczenie listy
 
   if (history.length === 0) {
     const li = document.createElement('li');
@@ -100,6 +99,7 @@ function renderAllData() {
   });
 }
 
+// Usuwanie wpisu
 window.deleteHike = function(id) {
     let history = JSON.parse(localStorage.getItem('savedHikes') || "[]");
     history = history.filter(h => h.id !== id);
@@ -107,6 +107,7 @@ window.deleteHike = function(id) {
     renderAllData();
 };
 
+// Podgląd zdjęcia na mapie
 window.showPhotoMap = function(url, lat, lng) {
     const overlay = document.createElement('div');
     overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10000; padding:15px;";
@@ -137,7 +138,7 @@ window.showPhotoMap = function(url, lat, lng) {
     }
 };
 
-// ŚLEDZENIE TRASY (LOGIKA BEZ ZMIAN)
+// Geolokalizacja i rysowanie trasy
 function updatePosition(lat, lng) {
     currentLat = lat; currentLng = lng;
     const pos = [lat, lng];
@@ -157,6 +158,7 @@ function updatePosition(lat, lng) {
     }
 }
 
+// Start trackingu
 function startTracking() {
   seconds = 0; routeCoords = []; currentHikePhotos = [];
   timerInterval = setInterval(() => {
@@ -169,6 +171,7 @@ function startTracking() {
   getEl('saveHike').disabled = false;
 }
 
+// Stop trackingu
 function stopTracking() {
   if (watchId) navigator.geolocation.clearWatch(watchId);
   if (timerInterval) clearInterval(timerInterval);
@@ -176,6 +179,7 @@ function stopTracking() {
   getEl('stopTracking').disabled = true;
 }
 
+// Zapisywanie danych do LS
 function saveHikeData() {
   const hike = {
     id: Date.now(),
@@ -190,6 +194,7 @@ function saveHikeData() {
   window.location.href = "offline.html";
 }
 
+// Kamera
 async function toggleCamera(enable) {
     const video = getEl('cameraPreview');
     if (enable) {
@@ -205,6 +210,7 @@ async function toggleCamera(enable) {
     }
 }
 
+// Robienie zdjęcia
 function takePhoto() {
   const v = getEl('cameraPreview');
   if (!v || !v.srcObject) return;
@@ -219,6 +225,7 @@ function takePhoto() {
   getEl('photoGallery').appendChild(img);
 }
 
+// Eventy po załadowaniu DOM
 document.addEventListener('DOMContentLoaded', () => {
   renderAllData();
   if (getEl('startTracking')) getEl('startTracking').onclick = startTracking;

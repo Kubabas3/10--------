@@ -1,4 +1,4 @@
-/* HikeTracker: Professional Responsive Styles */
+
 :root {
   --primary: #2d5016;
   --primary-gradient: linear-gradient(135deg, #2d5016 0%, #4a7c59 100%);
@@ -15,7 +15,7 @@
 
 * {
   box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent; /* Убирает синий блик при клике на мобилках */
+  -webkit-tap-highlight-color: transparent; 
 }
 
 body {
@@ -26,13 +26,13 @@ body {
   line-height: 1.6;
 }
 
-/* ШАПКА */
+
 header {
   background: var(--primary-gradient);
   color: #fff;
   padding: 12px 20px;
   display: flex;
-  flex-wrap: wrap; /* Чтобы меню переносилось на узких экранах */
+  flex-wrap: wrap; 
   align-items: center;
   justify-content: space-between;
   box-shadow: var(--shadow);
@@ -65,7 +65,7 @@ nav a.active {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* КОНТЕЙНЕРЫ */
+
 main {
   max-width: 1200px;
   margin: 0 auto;
@@ -80,7 +80,7 @@ main {
   margin-bottom: 20px;
 }
 
-/* ТРЕКИНГ (NATIVE.HTML) — 3 КОЛОНКИ */
+
 .tracking-layout {
   display: flex;
   gap: 20px;
@@ -91,16 +91,16 @@ main {
   min-width: 0;
 }
 
-/* КАРТА */
+
 #trackingMap {
   width: 100%;
-  height: 400px; /* Фиксированная высота для стабильности */
+  height: 400px; 
   border-radius: var(--border-radius);
   background: #eee;
   z-index: 1;
 }
 
-/* КАМЕРА */
+
 #cameraPreview {
   width: 100%;
   max-width: 100%;
@@ -115,7 +115,7 @@ main {
   margin-top: 10px;
 }
 
-/* КНОПКИ */
+
 .controls {
   display: flex;
   gap: 10px;
@@ -145,10 +145,10 @@ button:disabled {
 .save-btn { background: #2196f3; color: white; }
 .secondary { background: #eee; color: #333; }
 
-/* АДАПТИВНОСТЬ ДЛЯ ТЕЛЕФОНОВ */
+
 @media (max-width: 800px) {
   .tracking-layout {
-    flex-direction: column; /* Колонки друг под другом */
+    flex-direction: column; 
   }
   
   header {
@@ -158,23 +158,23 @@ button:disabled {
   }
 
   button {
-    width: 100%; /* Кнопки на весь экран */
+    width: 100%; 
   }
 
   #trackingMap {
-    height: 300px; /* На мобилках карта чуть меньше */
+    height: 300px; 
   }
 }
 
-/* ФИКС МОДАЛЬНОГО ОКНА (ИСТОРИЯ) */
+
 #miniMap {
   width: 100% !important;
-  height: 250px !important; /* Гарантирует, что карта не будет белым пятном */
+  height: 250px !important; 
   margin-top: 10px;
   border-radius: 10px;
 }
 
-/* ИСТОРИЯ (СПИСОК) */
+
 #saved-list {
   padding: 0;
   list-style: none;
